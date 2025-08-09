@@ -1,0 +1,19 @@
+/.metadata/
+# Node.js dependencies
+node_modules/
+package.json
+
+# Maven build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
