@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { MapPin, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { loginUser } from '../../api'; // <-- real API function
+import { loginUser } from '../../services/api'; // <-- real API function
 
 const LoginPage = () => {
   const { setUser } = useContext(AuthContext);

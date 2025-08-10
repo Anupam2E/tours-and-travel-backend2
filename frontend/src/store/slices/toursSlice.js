@@ -1,116 +1,204 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getAllTours, getTourById } from '../../api';
+import { tourAPI } from '../../services/api';
+
+// Async thunks
+export const fetchTours = createAsyncThunk(
+  'tours/fetchTours',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await tourAPI.getAllTours();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch tours');
+    }
+  }
+);
+
+export const fetchTourById = createAsyncThunk(
+  'tours/fetchTourById',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await tourAPI.getTourById(id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch tour');
+    }
+  }
+);
+
+export const createTour = createAsyncThunk(
+  'tours/createTour',
+  async (tourData, { rejectWithValue }) => {
+    try {
+      const response = await tourAPI.createTour(tourData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create tour');
+    }
+  }
+);
+
+export const updateTour = createAsyncThunk(
+  'tours/updateTour',
+  async ({ id, tourData }, { rejectWithValue }) => {
+    try {
+      const response = await tourAPI.updateTour(id, tourData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update tour');
+    }
+  }
+);
+
+export const deleteTour = createAsyncThunk(
+  'tours/deleteTour',
+  async (id, { rejectWithValue }) => {
+    try {
+      await tourAPI.deleteTour(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete tour');
+    }
+  }
+);
+
+export const activateTour = createAsyncThunk(
+  'tours/activateTour',
+  async (id, { rejectWithValue }) => {
+    try {
+      await tourAPI.activateTour(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to activate tour');
+    }
+  }
+);
+
+export const deactivateTour = createAsyncThunk(
+  'tours/deactivateTour',
+  async (id, { rejectWithValue }) => {
+    try {
+      await tourAPI.deactivateTour(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to deactivate tour');
+    }
+  }
+);
 
 const initialState = {
   tours: [],
+  currentTour: null,
   loading: false,
   error: null,
-  searchQuery: '',
-  selectedCategory: ''
+  filters: {
+    category: '',
+    destination: '',
+    priceRange: { min: 0, max: 10000 },
+    durationRange: { min: 1, max: 30 }
+  }
 };
-
-// Async thunks for backend sync
-export const fetchToursFromBackend = createAsyncThunk(
-  'tours/fetchFromBackend',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await getAllTours();
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
-
-export const fetchTourByIdFromBackend = createAsyncThunk(
-  'tours/fetchByIdFromBackend',
-  async (id, { rejectWithValue }) => {
-    try {
-      const data = await getTourById(id);
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
 
 const toursSlice = createSlice({
   name: 'tours',
   initialState,
   reducers: {
-    setTours: (state, action) => {
-      state.tours = action.payload;
-    },
-    addTour: (state, action) => {
-      state.tours.push(action.payload);
-    },
-    updateTour: (state, action) => {
-      const index = state.tours.findIndex(tour => tour.id === action.payload.id);
-      if (index !== -1) {
-        state.tours[index] = action.payload;
-      }
-    },
-    deleteTour: (state, action) => {
-      state.tours = state.tours.filter(tour => tour.id !== action.payload);
-    },
-    setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
-    setSearchQuery: (state, action) => {
-      state.searchQuery = action.payload;
-    },
-    setSelectedCategory: (state, action) => {
-      state.selectedCategory = action.payload;
-    },
     clearError: (state) => {
       state.error = null;
+    },
+    setFilters: (state, action) => {
+      state.filters = { ...state.filters, ...action.payload };
+    },
+    clearFilters: (state) => {
+      state.filters = initialState.filters;
+    },
+    clearCurrentTour: (state) => {
+      state.currentTour = null;
     }
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchToursFromBackend.pending, (state) => {
+      // Fetch tours
+      .addCase(fetchTours.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchToursFromBackend.fulfilled, (state, action) => {
+      .addCase(fetchTours.fulfilled, (state, action) => {
         state.loading = false;
         state.tours = action.payload;
         state.error = null;
       })
-      .addCase(fetchToursFromBackend.rejected, (state, action) => {
+      .addCase(fetchTours.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(fetchTourByIdFromBackend.pending, (state) => {
+      
+      // Fetch tour by ID
+      .addCase(fetchTourById.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchTourByIdFromBackend.fulfilled, (state, action) => {
+      .addCase(fetchTourById.fulfilled, (state, action) => {
         state.loading = false;
-        // Add the tour to the tours array if it doesn't exist
-        const existingIndex = state.tours.findIndex(tour => tour.id === action.payload.id);
-        if (existingIndex !== -1) {
-          state.tours[existingIndex] = action.payload;
-        } else {
-          state.tours.push(action.payload);
-        }
+        state.currentTour = action.payload;
         state.error = null;
       })
-      .addCase(fetchTourByIdFromBackend.rejected, (state, action) => {
+      .addCase(fetchTourById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      
+      // Create tour
+      .addCase(createTour.fulfilled, (state, action) => {
+        state.tours.push(action.payload);
+      })
+      
+      // Update tour
+      .addCase(updateTour.fulfilled, (state, action) => {
+        const index = state.tours.findIndex(tour => tour.id === action.payload.id);
+        if (index !== -1) {
+          state.tours[index] = action.payload;
+        }
+        if (state.currentTour?.id === action.payload.id) {
+          state.currentTour = action.payload;
+        }
+      })
+      
+      // Delete tour
+      .addCase(deleteTour.fulfilled, (state, action) => {
+        state.tours = state.tours.filter(tour => tour.id !== action.payload);
+        if (state.currentTour?.id === action.payload) {
+          state.currentTour = null;
+        }
+      })
+      
+      // Activate tour
+      .addCase(activateTour.fulfilled, (state, action) => {
+        const tour = state.tours.find(t => t.id === action.payload);
+        if (tour) tour.isActive = true;
+        if (state.currentTour?.id === action.payload) {
+          state.currentTour.isActive = true;
+        }
+      })
+      
+      // Deactivate tour
+      .addCase(deactivateTour.fulfilled, (state, action) => {
+        const tour = state.tours.find(t => t.id === action.payload);
+        if (tour) tour.isActive = false;
+        if (state.currentTour?.id === action.payload) {
+          state.currentTour.isActive = false;
+        }
       });
-  },
+  }
 });
 
-export const { 
-  setTours, 
-  addTour, 
-  updateTour, 
-  deleteTour, 
-  setLoading, 
-  setSearchQuery, 
-  setSelectedCategory,
-  clearError
-} = toursSlice.actions;
+export const { clearError, setFilters, clearFilters, clearCurrentTour } = toursSlice.actions;
+
+// Selectors
+export const selectTours = (state) => state.tours?.tours || [];
+export const selectCurrentTour = (state) => state.tours?.currentTour;
+export const selectToursLoading = (state) => state.tours?.loading || false;
+export const selectToursError = (state) => state.tours?.error;
+export const selectToursFilters = (state) => state.tours?.filters;
+
 export default toursSlice.reducer;

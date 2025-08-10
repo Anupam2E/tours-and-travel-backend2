@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { deleteTour, getAllTours } from '../../api';
+import { deleteTour, getAllTours } from '../../services/api';
 import { toast } from 'react-toastify';
 import { 
   Plus, 

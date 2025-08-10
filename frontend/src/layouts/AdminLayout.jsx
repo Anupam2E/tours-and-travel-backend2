@@ -31,6 +31,7 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const onLogout = () => {
+    localStorage.clear();
     sessionStorage.clear();
     setUser(null);
     navigate('/');

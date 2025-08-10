@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchUserBookingsFromBackend } from '../../store/slices/bookingsSlice';
+import { fetchCurrentUserBookings } from '../../store/slices/bookingsSlice';
+import { exportCSV } from '../../utils/exportCSV';
+import { AuthContext } from '../../contexts/AuthContext';
 import { 
   CreditCard, 
   Calendar, 
@@ -15,25 +17,23 @@ import {
 
 const PaymentHistory = () => {
   const dispatch = useDispatch();
-  const { userBookings, loading, error } = useSelector((state) => state.bookings);
+  const { currentUserBookings, loading, error } = useSelector((state) => state.bookings);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const token = sessionStorage.getItem('token');
+  const { user } = useContext(AuthContext);
 
   useEffect(() => {
-    if (token) {
-      dispatch(fetchUserBookingsFromBackend(token));
-    }
-  }, [dispatch, token]);
+    dispatch(fetchCurrentUserBookings());
+  }, [dispatch, user]);
 
   // Transform bookings to payment format
-  const payments = userBookings.map(booking => ({
+  const payments = currentUserBookings.map(booking => ({
     id: booking.id,
     tourTitle: booking.tourTitle || booking.tour?.title || 'Unknown Tour',
-    amount: booking.totalAmount || 0,
-    paymentDate: booking.bookingDate || booking.createdAt || new Date().toISOString(),
-    paymentMethod: booking.paymentMethod || 'Credit Card',
-    status: booking.paymentStatus || 'paid',
+    amount: parseFloat(booking.totalAmount) || 0,
+    paymentDate: booking.bookingDate || booking.createdAt,
+    paymentMethod: booking.paymentMethod || 'CREDIT_CARD',
+    status: booking.paymentStatus || 'PAID',
     bookingId: booking.id,
     tourId: booking.tourId
   }));
@@ -47,11 +47,11 @@ const PaymentHistory = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'paid':
+      case 'PAID':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'pending':
+      case 'PENDING':
         return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'refunded':
+      case 'REFUNDED':
         return <XCircle className="w-4 h-4 text-gray-500" />;
       default:
         return <Clock className="w-4 h-4 text-gray-500" />;
@@ -60,14 +60,14 @@ const PaymentHistory = () => {
 
   const getStatusBadge = (status) => {
     const statusStyles = {
-      paid: 'bg-green-100 text-green-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      refunded: 'bg-gray-100 text-gray-800'
+      PAID: 'bg-green-100 text-green-800',
+      PENDING: 'bg-yellow-100 text-yellow-800',
+      REFUNDED: 'bg-gray-100 text-gray-800'
     };
     
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status]}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
       </span>
     );
   };
@@ -93,7 +93,7 @@ const PaymentHistory = () => {
     );
   }
 
-  if (!token) {
+  if (!user) {
     return (
       <div className="text-center py-12">
         <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -131,7 +131,21 @@ const PaymentHistory = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Payment History</h1>
-        <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center">
+        <button 
+          onClick={() => {
+            const rows = currentUserBookings
+              .filter(b => b.paymentStatus === 'paid')
+              .map(b => ({
+                BookingID: b.id,
+                Tour: b.tourTitle || b.tour?.title || 'Unknown Tour',
+                Amount: b.totalAmount || 0,
+                Status: b.paymentStatus || 'paid',
+                Date: b.bookingDate || b.createdAt || new Date().toISOString()
+              }));
+            exportCSV(rows, 'payment-history.csv');
+          }}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center"
+        >
           <Download className="w-4 h-4 mr-2" />
           Export
         </button>

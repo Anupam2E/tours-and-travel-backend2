@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getMyWishlist, addToWishlistCurrent, removeFromWishlistCurrent } from '../../api';
+import { getMyWishlist, addToWishlistCurrent, removeFromWishlistCurrent } from '../../services/api';
 
 const initialState = {
   items: [],

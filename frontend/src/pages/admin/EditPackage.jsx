@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { updateTour, getTourById } from '../../api';
+import { getTourById } from '../../services/api';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Plus, X } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { updateTour } from '../../store/slices/toursSlice';
 
-const EditPackage = ({ token }) => {
+const EditPackage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -161,7 +164,7 @@ const EditPackage = ({ token }) => {
         isActive: formData.isActive
       };
 
-      await updateTour(id, tourData, token);
+      await dispatch(updateTour({ id, tourData })).unwrap();
       toast.success('Package updated successfully!');
       navigate('/admin/packages');
     } catch (error) {

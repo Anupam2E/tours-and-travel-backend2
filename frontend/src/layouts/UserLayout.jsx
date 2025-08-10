@@ -41,6 +41,7 @@ const UserLayout = () => {
   const token = sessionStorage.getItem('token');
 
   const onLogout = () => {
+    localStorage.clear();
     sessionStorage.clear();
     setUser(null);
     navigate('/');
@@ -163,10 +164,10 @@ const UserLayout = () => {
             <Route index element={<UserDashboard />} />
             <Route path="tours" element={<BrowseTours />} />
             <Route path="tours/:id" element={<TourDetails />} />
-            <Route path="bookings" element={<MyBookings token={token} />} />
+            <Route path="bookings" element={<MyBookings />} />
             <Route path="wishlist" element={<Wishlist />} />
             <Route path="payments" element={<PaymentHistory />} />
-            <Route path="reviews" element={<MyReviews token={token} />} />
+            <Route path="reviews" element={<MyReviews />} />
             <Route path="profile" element={<UserProfile />} />
             <Route path="about" element={<AboutUs />} />
             <Route path="contact" element={<ContactUs />} />

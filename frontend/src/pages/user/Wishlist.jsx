@@ -9,7 +9,7 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
-import { createBooking } from '../../api';
+import { createBooking } from '../../services/api';
 import { fetchWishlistFromBackend, removeFromWishlistBackend } from '../../store/slices/wishlistSlice';
 
 const Wishlist = () => {

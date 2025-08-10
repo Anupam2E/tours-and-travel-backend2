@@ -18,11 +18,12 @@ function App() {
 
   useEffect(() => {
     // Check if user is logged in
+    const token = sessionStorage.getItem('token');
     const firstName = sessionStorage.getItem('firstName');
     const lastName = sessionStorage.getItem('lastName');
     const role = sessionStorage.getItem('role');
 
-    if (firstName && lastName && role) {
+    if (token && firstName && lastName && role) {
       setUser({
         firstName,
         lastName,

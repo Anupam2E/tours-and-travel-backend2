@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { updateBooking } from '../../store/slices/bookingsSlice';
+import { updateBookingStatus } from '../../store/slices/bookingsSlice';
 import { toast } from 'react-toastify';
 import { 
   Calendar, 
@@ -63,12 +63,8 @@ const BookingManagement = () => {
   };
 
   const handleStatusUpdate = (bookingId, newStatus) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    if (booking) {
-      const updatedBooking = { ...booking, status: newStatus };
-      dispatch(updateBooking(updatedBooking));
-      toast.success(`Booking status updated to ${newStatus}`);
-    }
+    dispatch(updateBookingStatus({ id: bookingId, status: newStatus }));
+    toast.success(`Booking status updated to ${newStatus}`);
   };
 
   const handleViewBooking = (booking) => {
