@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend } from '../../store/slices/wishlistSlice';
-import { fetchToursFromBackend } from '../../store/slices/toursSlice';
+import { fetchTours } from '../../store/slices/toursSlice';
 import { Link, useNavigate } from 'react-router-dom';
-import { createBooking } from '../../api';
+import { createBooking } from '../../services/api';
 import { 
   Search, 
   Filter, 
@@ -31,7 +31,7 @@ const BrowseTours = () => {
   const categories = ['BEACH', 'ADVENTURE', 'CULTURAL', 'WILDLIFE', 'CITY', 'MOUNTAIN', 'CRUISE', 'FOOD'];
 
   useEffect(() => {
-    dispatch(fetchToursFromBackend());
+    dispatch(fetchTours());
   }, [dispatch]);
 
   // Fetch wishlist from backend when component mounts

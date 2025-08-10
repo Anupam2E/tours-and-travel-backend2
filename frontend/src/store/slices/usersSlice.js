@@ -1,128 +1,258 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { userAPI } from '../../services/api';
+
+// Async thunks
+export const fetchAllUsers = createAsyncThunk(
+  'users/fetchAllUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.getAllUsers();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
+    }
+  }
+);
+
+export const fetchActiveUsers = createAsyncThunk(
+  'users/fetchActiveUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.getActiveUsers();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch active users');
+    }
+  }
+);
+
+export const fetchUserById = createAsyncThunk(
+  'users/fetchUserById',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.getUserById(id);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user');
+    }
+  }
+);
+
+export const updateUser = createAsyncThunk(
+  'users/updateUser',
+  async ({ id, userData }, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.updateUser(id, userData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update user');
+    }
+  }
+);
+
+export const deleteUser = createAsyncThunk(
+  'users/deleteUser',
+  async (id, { rejectWithValue }) => {
+    try {
+      await userAPI.deleteUser(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete user');
+    }
+  }
+);
+
+export const activateUser = createAsyncThunk(
+  'users/activateUser',
+  async (id, { rejectWithValue }) => {
+    try {
+      await userAPI.activateUser(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to activate user');
+    }
+  }
+);
+
+export const deactivateUser = createAsyncThunk(
+  'users/deactivateUser',
+  async (id, { rejectWithValue }) => {
+    try {
+      await userAPI.deactivateUser(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to deactivate user');
+    }
+  }
+);
+
+export const searchUsers = createAsyncThunk(
+  'users/searchUsers',
+  async (searchTerm, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.searchUsers(searchTerm);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to search users');
+    }
+  }
+);
+
+export const updateProfile = createAsyncThunk(
+  'users/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const response = await userAPI.updateProfile(profileData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
+    }
+  }
+);
 
 const initialState = {
-  users: [
-    {
-      id: 'user1',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john@example.com',
-      phone: '+1234567890',
-      role: 'user',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
-      joinDate: '2023-06-15',
-      lastLogin: '2024-01-25T10:30:00Z',
-      isActive: true,
-      totalBookings: 3,
-      totalSpent: 4250,
-      countriesVisited: ['Maldives', 'Thailand', 'Japan'],
-      reviewsGiven: 2
-    },
-    {
-      id: 'user2',
-      firstName: 'Jane',
-      lastName: 'Smith',
-      email: 'jane@example.com',
-      phone: '+1234567891',
-      role: 'user',
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150',
-      joinDate: '2023-08-20',
-      lastLogin: '2024-01-24T15:45:00Z',
-      isActive: true,
-      totalBookings: 2,
-      totalSpent: 1950,
-      countriesVisited: ['Switzerland', 'Austria'],
-      reviewsGiven: 2
-    },
-    {
-      id: 'user3',
-      firstName: 'Mike',
-      lastName: 'Johnson',
-      email: 'mike@example.com',
-      phone: '+1234567892',
-      role: 'user',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150',
-      joinDate: '2023-12-10',
-      lastLogin: '2024-01-23T08:20:00Z',
-      isActive: true,
-      totalBookings: 1,
-      totalSpent: 756,
-      countriesVisited: ['India'],
-      reviewsGiven: 0
-    },
-    {
-      id: 'admin1',
-      firstName: 'Admin',
-      lastName: 'User',
-      email: 'admin@toursandtravels.com',
-      phone: '+1234567893',
-      role: 'admin',
-      avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150',
-      joinDate: '2023-01-01',
-      lastLogin: '2024-01-25T12:00:00Z',
-      isActive: true,
-      totalBookings: 0,
-      totalSpent: 0,
-      countriesVisited: [],
-      reviewsGiven: 0
-    }
-  ],
+  users: [],
   currentUser: null,
   loading: false,
-  totalUsers: 0,
-  activeUsers: 0
+  error: null,
+  stats: {
+    totalUsers: 0,
+    activeUsers: 0
+  }
 };
 
 const usersSlice = createSlice({
   name: 'users',
   initialState,
   reducers: {
-    setUsers: (state, action) => {
-      state.users = action.payload;
-      state.totalUsers = action.payload.filter(user => user.role === 'user').length;
-      state.activeUsers = action.payload.filter(user => user.role === 'user' && user.isActive).length;
+    clearError: (state) => {
+      state.error = null;
     },
-    addUser: (state, action) => {
-      state.users.push(action.payload);
-      if (action.payload.role === 'user') {
-        state.totalUsers += 1;
-        if (action.payload.isActive) {
-          state.activeUsers += 1;
-        }
-      }
-    },
-    updateUser: (state, action) => {
-      const index = state.users.findIndex(user => user.id === action.payload.id);
-      if (index !== -1) {
-        const oldUser = state.users[index];
-        state.users[index] = action.payload;
-        
-        // Update counters if needed
-        if (oldUser.role === 'user' && action.payload.role !== 'user') {
-          state.totalUsers -= 1;
-          if (oldUser.isActive) state.activeUsers -= 1;
-        } else if (oldUser.role !== 'user' && action.payload.role === 'user') {
-          state.totalUsers += 1;
-          if (action.payload.isActive) state.activeUsers += 1;
-        } else if (action.payload.role === 'user' && oldUser.isActive !== action.payload.isActive) {
-          state.activeUsers += action.payload.isActive ? 1 : -1;
-        }
-      }
+    clearUsers: (state) => {
+      state.users = [];
     },
     setCurrentUser: (state, action) => {
       state.currentUser = action.payload;
     },
-    setLoading: (state, action) => {
-      state.loading = action.payload;
+    clearCurrentUser: (state) => {
+      state.currentUser = null;
     }
   },
+  extraReducers: (builder) => {
+    builder
+      // Fetch all users
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.users = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Fetch active users
+      .addCase(fetchActiveUsers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveUsers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.users = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchActiveUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Fetch user by ID
+      .addCase(fetchUserById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentUser = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchUserById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Update user
+      .addCase(updateUser.fulfilled, (state, action) => {
+        const updatedUser = action.payload;
+        const index = state.users.findIndex(user => user.id === updatedUser.id);
+        if (index !== -1) {
+          state.users[index] = updatedUser;
+        }
+        if (state.currentUser?.id === updatedUser.id) {
+          state.currentUser = updatedUser;
+        }
+      })
+      
+      // Delete user
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        const deletedId = action.payload;
+        state.users = state.users.filter(user => user.id !== deletedId);
+        if (state.currentUser?.id === deletedId) {
+          state.currentUser = null;
+        }
+      })
+      
+      // Activate user
+      .addCase(activateUser.fulfilled, (state, action) => {
+        const userId = action.payload;
+        const user = state.users.find(u => u.id === userId);
+        if (user) user.isActive = true;
+        if (state.currentUser?.id === userId) {
+          state.currentUser.isActive = true;
+        }
+      })
+      
+      // Deactivate user
+      .addCase(deactivateUser.fulfilled, (state, action) => {
+        const userId = action.payload;
+        const user = state.users.find(u => u.id === userId);
+        if (user) user.isActive = false;
+        if (state.currentUser?.id === userId) {
+          state.currentUser.isActive = false;
+        }
+      })
+      
+      // Search users
+      .addCase(searchUsers.fulfilled, (state, action) => {
+        state.users = action.payload;
+      })
+      
+      // Update profile
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        const updatedUser = action.payload;
+        if (state.currentUser?.id === updatedUser.id) {
+          state.currentUser = updatedUser;
+        }
+        // Also update in users array if it exists there
+        const index = state.users.findIndex(user => user.id === updatedUser.id);
+        if (index !== -1) {
+          state.users[index] = updatedUser;
+        }
+      });
+  }
 });
 
-export const { 
-  setUsers, 
-  addUser, 
-  updateUser, 
-  setCurrentUser, 
-  setLoading 
-} = usersSlice.actions;
+export const { clearError, clearUsers, setCurrentUser, clearCurrentUser } = usersSlice.actions;
+
+// Selectors
+export const selectAllUsers = (state) => state.users?.users || [];
+export const selectCurrentUser = (state) => state.users?.currentUser;
+export const selectUsersLoading = (state) => state.users?.loading || false;
+export const selectUsersError = (state) => state.users?.error;
+export const selectUserStats = (state) => state.users?.stats || { totalUsers: 0, activeUsers: 0 };
+
 export default usersSlice.reducer;

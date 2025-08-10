@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createTour } from '../../api';
+import { createTour } from '../../services/api';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Upload, Plus, X } from 'lucide-react';
 

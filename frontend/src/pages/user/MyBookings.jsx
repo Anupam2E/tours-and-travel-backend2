@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchUserBookingsFromBackend } from '../../store/slices/bookingsSlice';
+import { fetchCurrentUserBookings } from '../../store/slices/bookingsSlice';
 import { 
   Calendar, 
   MapPin, 
@@ -11,28 +11,27 @@ import {
   Search,
   Eye
 } from 'lucide-react';
-import { deleteBooking } from '../../api';
+import { deleteBooking } from '../../services/api';
 
-const MyBookings = ({ token }) => {
+const MyBookings = () => {
   const dispatch = useDispatch();
-  const { userBookings, loading, error } = useSelector((state) => state.bookings);
+  const { currentUserBookings, loading, error } = useSelector((state) => state.bookings);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   // Fetch bookings on component mount
   useEffect(() => {
-    if (token) {
-      dispatch(fetchUserBookingsFromBackend(token));
-    }
-  }, [dispatch, token]);
+    dispatch(fetchCurrentUserBookings());
+  }, [dispatch]);
 
   const handleRemoveBooking = async (id) => {
     if(window.confirm('Are you sure you want to remove this booking?')) {
       try {
+        const token = sessionStorage.getItem('token');
         await deleteBooking(id, token);
         // Refresh bookings from backend after deletion
-        dispatch(fetchUserBookingsFromBackend(token));
+        dispatch(fetchCurrentUserBookings());
       } catch (err) {
         // Error will be handled by Redux state
       }
@@ -40,7 +39,7 @@ const MyBookings = ({ token }) => {
   };
 
   // Filter bookings for current user
-  const filteredBookings = userBookings.filter(booking => {
+  const filteredBookings = currentUserBookings.filter(booking => {
     const matchesSearch = booking.tourTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          booking.destination?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === '' || booking.status === statusFilter;
@@ -85,16 +84,7 @@ const MyBookings = ({ token }) => {
     );
   }
 
-  if (!loading && !token) {
-    return (
-      <div className="text-center py-12">
-        <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Sign in required</h3>
-        <p className="text-gray-600 mb-4">Please sign in to view your bookings.</p>
-        <a href="/login" className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg">Sign In</a>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6">
@@ -108,7 +98,7 @@ const MyBookings = ({ token }) => {
         <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
         <div className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-800 rounded-lg">
           <Calendar className="w-5 h-5 mr-2" />
-          <span className="font-medium">{userBookings.length} Total Bookings</span>
+          <span className="font-medium">{currentUserBookings.length} Total Bookings</span>
         </div>
       </div>
 
@@ -146,7 +136,7 @@ const MyBookings = ({ token }) => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Spent</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${userBookings.reduce((sum, booking) => sum + (parseFloat(booking.totalAmount) || 0), 0).toFixed(2)}
+                ${currentUserBookings.reduce((sum, booking) => sum + (parseFloat(booking.totalAmount) || 0), 0).toFixed(2)}
               </p>
             </div>
           </div>

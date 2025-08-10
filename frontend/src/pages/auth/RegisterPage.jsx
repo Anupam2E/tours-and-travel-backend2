@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
-import { registerUser } from '../../api.js'; // <-- real API function
+import { registerUser } from '../../services/api'; // <-- real API function
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({

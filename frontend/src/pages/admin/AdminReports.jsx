@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
   BarChart, 
   Bar, 
@@ -25,22 +25,49 @@ import {
   Download,
   Filter
 } from 'lucide-react';
+import { fetchTours } from '../../store/slices/toursSlice';
+import { fetchAllBookings, fetchBookingStats } from '../../store/slices/bookingsSlice';
+import { fetchAllUsers } from '../../store/slices/usersSlice';
+import { exportCSV } from '../../utils/exportCSV';
 
 const AdminReports = () => {
+  const dispatch = useDispatch();
   const tours = useSelector((state) => state.tours.tours);
   const bookings = useSelector((state) => state.bookings.bookings);
   const users = useSelector((state) => state.users.users);
+  const loading = useSelector((state) => state.bookings.loading || state.tours.loading || state.users.loading);
   const [selectedPeriod, setSelectedPeriod] = useState('6months');
 
-  // Revenue data for the last 6 months
-  const revenueData = [
-    { month: 'Jan', revenue: 12000, bookings: 45 },
-    { month: 'Feb', revenue: 15000, bookings: 52 },
-    { month: 'Mar', revenue: 18000, bookings: 61 },
-    { month: 'Apr', revenue: 22000, bookings: 73 },
-    { month: 'May', revenue: 25000, bookings: 84 },
-    { month: 'Jun', revenue: 28000, bookings: 92 }
-  ];
+  useEffect(() => {
+    dispatch(fetchTours());
+    dispatch(fetchAllBookings());
+    dispatch(fetchAllUsers());
+    dispatch(fetchBookingStats());
+  }, [dispatch]);
+
+  // Generate revenue data from actual bookings
+  const generateRevenueData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month, index) => {
+      const monthIndex = (currentMonth - 5 + index + 12) % 12;
+      const monthBookings = bookings.filter(booking => {
+        const bookingDate = new Date(booking.createdAt || booking.bookingDate);
+        return bookingDate.getMonth() === monthIndex && booking.paymentStatus === 'paid';
+      });
+      const monthRevenue = monthBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+      const monthBookingsCount = monthBookings.length;
+      
+      return {
+        month,
+        revenue: monthRevenue,
+        bookings: monthBookingsCount
+      };
+    });
+  };
+
+  const revenueData = generateRevenueData();
 
   // Category distribution
   const categoryData = tours.reduce((acc, tour) => {
@@ -61,18 +88,29 @@ const AdminReports = () => {
     bookings: bookings.filter(booking => booking.tourId === tour.id).length,
     revenue: bookings
       .filter(booking => booking.tourId === tour.id && booking.paymentStatus === 'paid')
-      .reduce((sum, booking) => sum + booking.totalAmount, 0)
+      .reduce((sum, booking) => sum + (booking.totalAmount || 0), 0)
   })).sort((a, b) => b.bookings - a.bookings).slice(0, 8);
 
-  // User growth data
-  const userGrowthData = [
-    { month: 'Jan', users: 120 },
-    { month: 'Feb', users: 145 },
-    { month: 'Mar', users: 178 },
-    { month: 'Apr', users: 210 },
-    { month: 'May', users: 245 },
-    { month: 'Jun', users: 280 }
-  ];
+  // Generate user growth data from actual user registrations
+  const generateUserGrowthData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    return months.slice(Math.max(0, currentMonth - 5), currentMonth + 1).map((month, index) => {
+      const monthIndex = (currentMonth - 5 + index + 12) % 12;
+      const monthUsers = users.filter(user => {
+        const userDate = new Date(user.createdAt || user.registrationDate);
+        return userDate.getMonth() === monthIndex && user.role === 'user';
+      });
+      
+      return {
+        month,
+        users: monthUsers.length
+      };
+    });
+  };
+
+  const userGrowthData = generateUserGrowthData();
 
   // Booking status distribution
   const bookingStatusData = [
@@ -100,14 +138,45 @@ const AdminReports = () => {
 
   const totalRevenue = bookings
     .filter(booking => booking.paymentStatus === 'paid')
-    .reduce((sum, booking) => sum + booking.totalAmount, 0);
+    .reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
 
   const averageBookingValue = totalRevenue / bookings.filter(b => b.paymentStatus === 'paid').length || 0;
 
   const exportReport = () => {
-    // In a real app, this would generate and download a PDF/Excel report
-    alert('Report export functionality would be implemented here');
+    const rows = [
+      { Metric: 'Total Revenue', Value: `$${totalRevenue.toLocaleString()}` },
+      { Metric: 'Total Bookings', Value: bookings.length },
+      { Metric: 'Avg Booking Value', Value: `$${Math.round(averageBookingValue)}` },
+      { Metric: 'Active Users', Value: users.filter(u => u.role === 'user' && u.isActive).length },
+      { Metric: 'Total Tours', Value: tours.length },
+      { Metric: 'Confirmed Bookings', Value: bookings.filter(b => b.status === 'confirmed').length },
+      { Metric: 'Pending Bookings', Value: bookings.filter(b => b.status === 'pending').length },
+      { Metric: 'Completed Bookings', Value: bookings.filter(b => b.status === 'completed').length },
+      { Metric: 'Cancelled Bookings', Value: bookings.filter(b => b.status === 'cancelled').length },
+      ...destinationData.map(d => ({ 
+        Metric: `Destination: ${d.destination}`, 
+        Value: `${d.bookings} bookings, $${d.revenue.toLocaleString()} revenue` 
+      })),
+      ...categoryData.map(c => ({ 
+        Metric: `Category: ${c.name}`, 
+        Value: `${c.value} tours` 
+      })),
+      ...bookingStatusData.map(s => ({ 
+        Metric: `Status: ${s.name}`, 
+        Value: s.value 
+      })),
+    ];
+    
+    exportCSV(rows, `admin-report-${new Date().toISOString().slice(0,10)}.csv`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

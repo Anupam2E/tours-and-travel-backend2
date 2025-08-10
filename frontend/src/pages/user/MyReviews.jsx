@@ -7,9 +7,9 @@ import {
   Trash2,
   Plus
 } from 'lucide-react';
-import { getCurrentUserReviews, createReview, updateReview, deleteReview, getAllTours } from '../../api';
+import { getCurrentUserReviews, createReview, updateReview, deleteReview, getAllTours } from '../../services/api';
 
-const MyReviews = ({ token }) => {
+const MyReviews = () => {
   const [reviews, setReviews] = useState([]);
   const [tours, setTours] = useState([]);
   const [showAddReview, setShowAddReview] = useState(false);
@@ -28,9 +28,12 @@ const MyReviews = ({ token }) => {
     const fetchReviews = async () => {
       try {
         setLoading(true);
-        const data = await getCurrentUserReviews(token);
-        setReviews(data);
-        setError(null);
+        const token = sessionStorage.getItem('token');
+        if (token) {
+          const data = await getCurrentUserReviews(token);
+          setReviews(data);
+          setError(null);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -38,10 +41,8 @@ const MyReviews = ({ token }) => {
       }
     };
 
-    if (token) {
-      fetchReviews();
-    }
-  }, [token]);
+    fetchReviews();
+  }, []);
 
   // Fetch tours when adding/editing review
   useEffect(() => {
@@ -107,6 +108,7 @@ const MyReviews = ({ token }) => {
     e.preventDefault();
     console.log('Submitting review:', modalForm);
     try {
+      const token = sessionStorage.getItem('token');
       if (editingReview) {
         // Update review
         const updatedReview = await updateReview(editingReview.id, modalForm, token);
@@ -127,6 +129,7 @@ const MyReviews = ({ token }) => {
   const handleDeleteReview = async (reviewId) => {
     if (window.confirm('Are you sure you want to delete this review?')) {
       try {
+        const token = sessionStorage.getItem('token');
         await deleteReview(reviewId, token);
         setReviews(reviews.filter(review => review.id !== reviewId));
         setError(null);

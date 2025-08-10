@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend } from '../../store/slices/wishlistSlice';
-import { fetchTourByIdFromBackend } from '../../store/slices/toursSlice';
+import { fetchTourById } from '../../store/slices/toursSlice';
+import { fetchCurrentUserBookings } from '../../store/slices/bookingsSlice';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -15,18 +16,18 @@ import {
   DollarSign,
   Check
 } from 'lucide-react';
-import { createBooking } from '../../api';
+import { createBooking } from '../../services/api';
 
 const TourDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const { tours, loading: toursLoading, error: toursError } = useSelector((state) => state.tours);
+  const { tours, currentTour, loading: toursLoading, error: toursError } = useSelector((state) => state.tours);
   const reduxTour = tours.find(t => String(t.id) === String(id));
   
-  const [tour, setTour] = useState(reduxTour || null);
-  const [loading, setLoading] = useState(!reduxTour);
+  const [tour, setTour] = useState(reduxTour || currentTour || null);
+  const [loading, setLoading] = useState(!(reduxTour || currentTour));
   const [error, setError] = useState(null);
   
   const wishlistItems = useSelector((state) => state.wishlist.items);
@@ -37,14 +38,14 @@ const TourDetails = () => {
   const token = sessionStorage.getItem('token');
 
   useEffect(() => {
-    if (reduxTour) {
-      setTour(reduxTour);
+    if (reduxTour || currentTour) {
+      setTour(reduxTour || currentTour);
       setLoading(false);
       return;
     }
     // Fetch tour from backend if not in Redux store
-    dispatch(fetchTourByIdFromBackend(id));
-  }, [id, reduxTour, dispatch]);
+    dispatch(fetchTourById(id));
+  }, [id, reduxTour, currentTour, dispatch]);
 
   // Fetch wishlist from backend when component mounts
   useEffect(() => {
@@ -55,12 +56,13 @@ const TourDetails = () => {
 
   // Watch for tour updates in Redux store
   useEffect(() => {
-    const updatedTour = tours.find(t => String(t.id) === String(id));
-    if (updatedTour && updatedTour !== tour) {
-      setTour(updatedTour);
+    const updatedFromList = tours.find(t => String(t.id) === String(id));
+    const updated = updatedFromList || currentTour;
+    if (updated && updated !== tour) {
+      setTour(updated);
       setLoading(false);
     }
-  }, [tours, id, tour]);
+  }, [tours, currentTour, id, tour]);
 
   const tourImage = (t) => (t?.tourImage || t?.imageUrl || t?.image || 'https://via.placeholder.com/960x480?text=Tour');
 
@@ -136,16 +138,20 @@ const TourDetails = () => {
 
     try {
       await createBooking(bookingPayload, token);
+      // Remove from wishlist if it was there
       if (isInWishlist) {
-        dispatch(removeFromWishlist({
-          id: tour.id,
-          title: tour.title,
-          price: tour.price,
-          image: tourImage(tour),
-          destination: tour.destination,
-          duration: tour.duration
-        }));
+        try {
+          await dispatch(removeFromWishlistBackend({ tourId: tour.id, token })).unwrap();
+          // Refresh wishlist from backend
+          dispatch(fetchWishlistFromBackend(token));
+        } catch (wishlistErr) {
+          console.warn('Failed to remove from wishlist after booking:', wishlistErr);
+        }
       }
+      
+      // Refresh user bookings
+      dispatch(fetchCurrentUserBookings());
+      
       alert('Booking confirmed! Check My Bookings page.');
       setSelectedDate('');
       setGuests(1);
@@ -156,10 +162,11 @@ const TourDetails = () => {
   };
 
   const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800';
-      case 'moderate': return 'bg-yellow-100 text-yellow-800';
-      case 'difficult': return 'bg-red-100 text-red-800';
+    const d = (difficulty || '').toString().toUpperCase();
+    switch (d) {
+      case 'EASY': return 'bg-green-100 text-green-800';
+      case 'MODERATE': return 'bg-yellow-100 text-yellow-800';
+      case 'DIFFICULT': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
