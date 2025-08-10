@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUserBookingsFromBackend } from '../../store/slices/bookingsSlice';
 import { 
   CreditCard, 
   Calendar, 
@@ -13,22 +14,31 @@ import {
 } from 'lucide-react';
 
 const PaymentHistory = () => {
-  const bookings = useSelector((state) => state.bookings.bookings);
+  const dispatch = useDispatch();
+  const { userBookings, loading, error } = useSelector((state) => state.bookings);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const token = sessionStorage.getItem('token');
 
-  // Filter payments for current user (in a real app, this would be based on user ID)
-  const userPayments = bookings.map(booking => ({
+  useEffect(() => {
+    if (token) {
+      dispatch(fetchUserBookingsFromBackend(token));
+    }
+  }, [dispatch, token]);
+
+  // Transform bookings to payment format
+  const payments = userBookings.map(booking => ({
     id: booking.id,
-    tourTitle: booking.tourTitle,
-    amount: booking.totalAmount,
-    paymentDate: booking.bookingDate,
-    paymentMethod: booking.paymentMethod,
-    status: booking.paymentStatus,
-    bookingId: booking.id
+    tourTitle: booking.tourTitle || booking.tour?.title || 'Unknown Tour',
+    amount: booking.totalAmount || 0,
+    paymentDate: booking.bookingDate || booking.createdAt || new Date().toISOString(),
+    paymentMethod: booking.paymentMethod || 'Credit Card',
+    status: booking.paymentStatus || 'paid',
+    bookingId: booking.id,
+    tourId: booking.tourId
   }));
 
-  const filteredPayments = userPayments.filter(payment => {
+  const filteredPayments = payments.filter(payment => {
     const matchesSearch = payment.tourTitle.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === '' || payment.status === statusFilter;
     
@@ -73,6 +83,49 @@ const PaymentHistory = () => {
   const totalRefunded = filteredPayments
     .filter(payment => payment.status === 'refunded')
     .reduce((sum, payment) => sum + payment.amount, 0);
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading payment history...</p>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="text-center py-12">
+        <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Please sign in to view your payment history</h3>
+        <p className="text-gray-600 mb-6">
+          You need to be signed in to view your payment and booking history.
+        </p>
+        <button
+          onClick={() => window.location.href = '/login'}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        >
+          Sign In
+        </button>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load payment history</h3>
+        <p className="text-gray-600 mb-6">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

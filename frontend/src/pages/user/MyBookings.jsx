@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUserBookingsFromBackend } from '../../store/slices/bookingsSlice';
 import { 
   Calendar, 
   MapPin, 
@@ -9,58 +11,36 @@ import {
   Search,
   Eye
 } from 'lucide-react';
-import { getCurrentUserBookings, deleteBooking } from '../../api';
+import { deleteBooking } from '../../api';
 
 const MyBookings = ({ token }) => {
-  const [bookings, setBookings] = useState([]);
+  const dispatch = useDispatch();
+  const { userBookings, loading, error } = useSelector((state) => state.bookings);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Fetch bookings on component mount
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        setLoading(true);
-        const data = await getCurrentUserBookings(token);
-        setBookings(Array.isArray(data) ? data : []);
-        setError(null);
-      } catch (err) {
-        // Normalize common auth errors
-        if (String(err.message).toLowerCase().includes('unauthorized')) {
-          setError('Please sign in again to view your bookings.');
-        } else {
-          setError(err.message);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!token) {
-      setError('Please sign in to view your bookings.');
-      setLoading(false);
-      return;
+    if (token) {
+      dispatch(fetchUserBookingsFromBackend(token));
     }
-    fetchBookings();
-  }, [token]);
+  }, [dispatch, token]);
 
   const handleRemoveBooking = async (id) => {
     if(window.confirm('Are you sure you want to remove this booking?')) {
       try {
         await deleteBooking(id, token);
-        setBookings(bookings.filter(booking => booking.id !== id));
-        setError(null);
+        // Refresh bookings from backend after deletion
+        dispatch(fetchUserBookingsFromBackend(token));
       } catch (err) {
-        setError(err.message);
+        // Error will be handled by Redux state
       }
     }
   };
 
   // Filter bookings for current user
-  const userBookings = bookings.filter(booking => {
+  const filteredBookings = userBookings.filter(booking => {
     const matchesSearch = booking.tourTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          booking.destination?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === '' || booking.status === statusFilter;
@@ -88,11 +68,11 @@ const MyBookings = ({ token }) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const upcomingBookings = userBookings.filter(booking => 
+  const upcomingBookings = filteredBookings.filter(booking => 
     booking.status === 'CONFIRMED' && new Date(booking.travelDate) > new Date()
   );
 
-  const pastBookings = userBookings.filter(booking => 
+  const pastBookings = filteredBookings.filter(booking => 
     booking.status === 'COMPLETED' || new Date(booking.travelDate) < new Date()
   );
 
@@ -201,14 +181,14 @@ const MyBookings = ({ token }) => {
           
           <div className="flex items-center text-sm text-gray-600">
             <Filter className="w-4 h-4 mr-2" />
-            {userBookings.length} bookings found
+            {filteredBookings.length} bookings found
           </div>
         </div>
       </div>
 
       {/* Bookings List */}
       <div className="space-y-4">
-        {userBookings.map((booking) => (
+                    {filteredBookings.map((booking) => (
           <div key={booking.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
             <div className="p-6">
               <div className="flex items-start justify-between">
@@ -270,7 +250,7 @@ const MyBookings = ({ token }) => {
         ))}
       </div>
 
-      {userBookings.length === 0 && (
+              {filteredBookings.length === 0 && (
         <div className="text-center py-12">
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>

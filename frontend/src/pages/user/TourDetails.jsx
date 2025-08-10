@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
+import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend } from '../../store/slices/wishlistSlice';
+import { fetchTourByIdFromBackend } from '../../store/slices/toursSlice';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -14,17 +15,16 @@ import {
   DollarSign,
   Check
 } from 'lucide-react';
-import { createBooking, getTourById } from '../../api';
+import { createBooking } from '../../api';
 
 const TourDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const reduxTour = useSelector((state) => 
-    state.tours.tours.find(t => String(t.id) === String(id))
-  );
-
+  const { tours, loading: toursLoading, error: toursError } = useSelector((state) => state.tours);
+  const reduxTour = tours.find(t => String(t.id) === String(id));
+  
   const [tour, setTour] = useState(reduxTour || null);
   const [loading, setLoading] = useState(!reduxTour);
   const [error, setError] = useState(null);
@@ -42,20 +42,25 @@ const TourDetails = () => {
       setLoading(false);
       return;
     }
-    const load = async () => {
-      try {
-        setLoading(true);
-        const data = await getTourById(id);
-        setTour(data);
-        setError(null);
-      } catch (err) {
-        setError(err.message || 'Failed to load tour');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [id, reduxTour]);
+    // Fetch tour from backend if not in Redux store
+    dispatch(fetchTourByIdFromBackend(id));
+  }, [id, reduxTour, dispatch]);
+
+  // Fetch wishlist from backend when component mounts
+  useEffect(() => {
+    if (token) {
+      dispatch(fetchWishlistFromBackend(token));
+    }
+  }, [dispatch, token]);
+
+  // Watch for tour updates in Redux store
+  useEffect(() => {
+    const updatedTour = tours.find(t => String(t.id) === String(id));
+    if (updatedTour && updatedTour !== tour) {
+      setTour(updatedTour);
+      setLoading(false);
+    }
+  }, [tours, id, tour]);
 
   const tourImage = (t) => (t?.tourImage || t?.imageUrl || t?.image || 'https://via.placeholder.com/960x480?text=Tour');
 
@@ -82,25 +87,29 @@ const TourDetails = () => {
     );
   }
 
-  const handleWishlistToggle = () => {
+  const handleWishlistToggle = async () => {
+    if (!token) {
+      alert('Please sign in to save tours to your wishlist.');
+      navigate('/login');
+      return;
+    }
+
     if (isInWishlist) {
-      dispatch(removeFromWishlist({
-        id: tour.id,
-        title: tour.title,
-        price: tour.price,
-        image: tourImage(tour),
-        destination: tour.destination,
-        duration: tour.duration
-      }));
+      try {
+        await dispatch(removeFromWishlistBackend({ tourId: tour.id, token })).unwrap();
+        // Refresh wishlist from backend
+        dispatch(fetchWishlistFromBackend(token));
+      } catch (err) {
+        alert('Failed to remove from wishlist: ' + err.message);
+      }
     } else {
-      dispatch(addToWishlist({
-        id: tour.id,
-        title: tour.title,
-        price: tour.price,
-        image: tourImage(tour),
-        destination: tour.destination,
-        duration: tour.duration
-      }));
+      try {
+        await dispatch(addToWishlistBackend({ tourId: tour.id, token })).unwrap();
+        // Refresh wishlist from backend
+        dispatch(fetchWishlistFromBackend(token));
+      } catch (err) {
+        alert('Failed to add to wishlist: ' + err.message);
+      }
     }
   };
 

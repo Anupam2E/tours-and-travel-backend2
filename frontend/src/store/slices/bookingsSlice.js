@@ -1,69 +1,38 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getUserBookings, getAllBookings } from '../../api';
 
 const initialState = {
-  bookings: [
-    {
-      id: '1',
-      userId: 'user1',
-      tourId: '1',
-      tourTitle: 'Tropical Paradise Adventure',
-      tourImage: 'https://images.pexels.com/photos/1287460/pexels-photo-1287460.jpeg?auto=compress&cs=tinysrgb&w=800',
-      destination: 'Maldives',
-      userEmail: 'john@example.com',
-      userName: 'John Doe',
-      bookingDate: '2024-01-20',
-      travelDate: '2024-03-15',
-      endDate: '2024-03-22',
-      guests: 2,
-      totalAmount: 2598,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      paymentMethod: 'Credit Card',
-      createdAt: '2024-01-20T10:30:00Z'
-    },
-    {
-      id: '2',
-      userId: 'user2',
-      tourId: '2',
-      tourTitle: 'Mountain Expedition',
-      tourImage: 'https://images.pexels.com/photos/618833/pexels-photo-618833.jpeg?auto=compress&cs=tinysrgb&w=800',
-      destination: 'Swiss Alps',
-      userEmail: 'jane@example.com',
-      userName: 'Jane Smith',
-      bookingDate: '2024-01-18',
-      travelDate: '2024-04-10',
-      endDate: '2024-04-15',
-      guests: 1,
-      totalAmount: 899,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      paymentMethod: 'PayPal',
-      createdAt: '2024-01-18T14:15:00Z'
-    },
-    {
-      id: '3',
-      userId: 'user3',
-      tourId: '3',
-      tourTitle: 'Cultural Heritage Tour',
-      tourImage: 'https://images.pexels.com/photos/2161467/pexels-photo-2161467.jpeg?auto=compress&cs=tinysrgb&w=800',
-      destination: 'India',
-      userEmail: 'mike@example.com',
-      userName: 'Mike Johnson',
-      bookingDate: '2024-01-22',
-      travelDate: '2024-05-20',
-      endDate: '2024-05-26',
-      guests: 4,
-      totalAmount: 3024,
-      status: 'pending',
-      paymentStatus: 'pending',
-      paymentMethod: 'Bank Transfer',
-      createdAt: '2024-01-22T09:45:00Z'
-    }
-  ],
+  bookings: [],
   userBookings: [],
   loading: false,
+  error: null,
   totalRevenue: 0
 };
+
+// Async thunks for backend sync
+export const fetchUserBookingsFromBackend = createAsyncThunk(
+  'bookings/fetchUserBookingsFromBackend',
+  async (token, { rejectWithValue }) => {
+    try {
+      const data = await getUserBookings(token);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const fetchAllBookingsFromBackend = createAsyncThunk(
+  'bookings/fetchAllBookingsFromBackend',
+  async (token, { rejectWithValue }) => {
+    try {
+      const data = await getAllBookings(token);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 const bookingsSlice = createSlice({
   name: 'bookings',
@@ -105,8 +74,43 @@ const bookingsSlice = createSlice({
     },
     removeBooking: (state, action) => {
       state.bookings = state.bookings.filter(booking => booking.id !== action.payload);
+    },
+    clearError: (state) => {
+      state.error = null;
     }
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUserBookingsFromBackend.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserBookingsFromBackend.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userBookings = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchUserBookingsFromBackend.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchAllBookingsFromBackend.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllBookingsFromBackend.fulfilled, (state, action) => {
+        state.loading = false;
+        state.bookings = action.payload;
+        state.totalRevenue = action.payload
+          .filter(booking => booking.paymentStatus === 'paid')
+          .reduce((total, booking) => total + booking.totalAmount, 0);
+        state.error = null;
+      })
+      .addCase(fetchAllBookingsFromBackend.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  }
 });
 
 export const { 
@@ -115,6 +119,7 @@ export const {
   updateBooking, 
   setUserBookings, 
   setLoading, 
-  removeBooking 
+  removeBooking,
+  clearError
 } = bookingsSlice.actions;
 export default bookingsSlice.reducer;

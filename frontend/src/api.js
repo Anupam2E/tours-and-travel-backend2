@@ -413,3 +413,29 @@ export const deleteReview = async (id, token) => {
   
   return res;
 };
+
+// Additional booking functions for admin and user
+export const getUserBookings = async (token) => {
+  return getCurrentUserBookings(token);
+};
+
+export const getAllBookings = async (token) => {
+  const res = await fetch(`${API_BASE_URL}/api/bookings`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    credentials: 'include'
+  });
+  
+  if (!res.ok) {
+    const text = await res.text();
+    let errorData;
+    try {
+      errorData = text ? JSON.parse(text) : {}; } catch { errorData = { message: text || 'Failed to fetch all bookings' }; }
+    throw new Error(errorData.message || 'Failed to fetch all bookings');
+  }
+  
+  return res.json();
+};

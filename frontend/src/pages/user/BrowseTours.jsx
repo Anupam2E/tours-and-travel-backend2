@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
+import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend } from '../../store/slices/wishlistSlice';
+import { fetchToursFromBackend } from '../../store/slices/toursSlice';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAllTours, createBooking } from '../../api';
+import { createBooking } from '../../api';
 import { 
   Search, 
   Filter, 
@@ -17,11 +18,10 @@ import {
 const BrowseTours = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { tours, loading, error } = useSelector((state) => state.tours);
   const wishlistItems = useSelector((state) => state.wishlist.items);
+  const wishlistLoading = useSelector((state) => state.wishlist.loading);
 
-  const [tours, setTours] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState('');
@@ -31,20 +31,15 @@ const BrowseTours = () => {
   const categories = ['BEACH', 'ADVENTURE', 'CULTURAL', 'WILDLIFE', 'CITY', 'MOUNTAIN', 'CRUISE', 'FOOD'];
 
   useEffect(() => {
-    const fetchTours = async () => {
-      try {
-        setLoading(true);
-        const data = await getAllTours();
-        setTours(Array.isArray(data) ? data : []);
-        setError(null);
-      } catch (err) {
-        setError(err.message || 'Failed to load tours');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTours();
-  }, []);
+    dispatch(fetchToursFromBackend());
+  }, [dispatch]);
+
+  // Fetch wishlist from backend when component mounts
+  useEffect(() => {
+    if (token) {
+      dispatch(fetchWishlistFromBackend(token));
+    }
+  }, [dispatch, token]);
 
   const filteredTours = tours.filter(tour => {
     const title = (tour.title || '').toLowerCase();
@@ -66,18 +61,31 @@ const BrowseTours = () => {
 
   const imageForTour = (tour) => tour.tourImage || tour.imageUrl || 'https://via.placeholder.com/640x360?text=Tour+Image';
 
-  const handleWishlistToggle = (tour) => {
+  const handleWishlistToggle = async (tour) => {
+    if (!token) {
+      alert('Please sign in to save tours to your wishlist.');
+      navigate('/login');
+      return;
+    }
+
     if (isInWishlist(tour.id)) {
-      dispatch(removeFromWishlist(tour));
+      // Remove from wishlist
+      try {
+        await dispatch(removeFromWishlistBackend({ tourId: tour.id, token })).unwrap();
+        // Refresh wishlist from backend
+        dispatch(fetchWishlistFromBackend(token));
+      } catch (err) {
+        alert('Failed to remove from wishlist: ' + err.message);
+      }
     } else {
-      dispatch(addToWishlist({
-        id: tour.id,
-        title: tour.title,
-        price: typeof tour.price === 'number' ? tour.price : parseFloat(tour.price || 0),
-        image: imageForTour(tour),
-        destination: tour.destination,
-        duration: tour.duration
-      }));
+      // Add to wishlist
+      try {
+        await dispatch(addToWishlistBackend({ tourId: tour.id, token })).unwrap();
+        // Refresh wishlist from backend
+        dispatch(fetchWishlistFromBackend(token));
+      } catch (err) {
+        alert('Failed to add to wishlist: ' + err.message);
+      }
     }
   };
 

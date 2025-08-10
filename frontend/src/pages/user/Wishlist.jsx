@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Heart, 
@@ -10,62 +10,25 @@ import {
   Eye
 } from 'lucide-react';
 import { createBooking } from '../../api';
+import { fetchWishlistFromBackend, removeFromWishlistBackend } from '../../store/slices/wishlistSlice';
 
 const Wishlist = () => {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { items, loading, error } = useSelector((state) => state.wishlist);
   const token = sessionStorage.getItem('token');
 
-  const fetchWishlist = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('http://localhost:8082/api/wishlist/my-wishlist', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Failed to fetch wishlist');
-      }
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch wishlist');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (!token) {
-      setError('Please sign in to view your wishlist.');
-      setLoading(false);
-      return;
+    if (token) {
+      dispatch(fetchWishlistFromBackend(token));
     }
-    fetchWishlist();
-  }, [token]);
+  }, [dispatch, token]);
 
   const handleRemoveFromWishlist = async (tourId) => {
     try {
-      const res = await fetch(`http://localhost:8082/api/wishlist/remove-current?tourId=${tourId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Failed to remove from wishlist');
-      }
-      setItems(items.filter(t => t.id !== tourId));
+      await dispatch(removeFromWishlistBackend({ tourId, token })).unwrap();
+      // Refresh wishlist from backend
+      dispatch(fetchWishlistFromBackend(token));
     } catch (err) {
       alert(err.message || 'Failed to remove from wishlist');
     }
@@ -110,6 +73,24 @@ const Wishlist = () => {
       <div className="text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
         <p className="mt-4 text-gray-600">Loading wishlist...</p>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="text-center py-12">
+        <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Please sign in to view your wishlist</h3>
+        <p className="text-gray-600 mb-6">
+          You need to be signed in to save and view your favorite tours.
+        </p>
+        <Link
+          to="/login"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        >
+          Sign In
+        </Link>
       </div>
     );
   }
