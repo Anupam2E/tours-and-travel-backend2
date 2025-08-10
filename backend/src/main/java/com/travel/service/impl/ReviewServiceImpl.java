@@ -137,6 +137,10 @@ public class ReviewServiceImpl implements ReviewService {
         dto.setComment(review.getComment());
         dto.setCreatedAt(review.getCreatedAt());
         dto.setUpdatedAt(review.getUpdatedAt());
+        // Populate tour fields for frontend display
+        dto.setTourTitle(review.getTour().getTitle());
+        dto.setTourDestination(review.getTour().getDestination());
+        dto.setTourImage(review.getTour().getImageUrl());
         return dto;
     }
 } 

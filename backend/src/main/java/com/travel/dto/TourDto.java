@@ -21,6 +21,7 @@ public class TourDto {
     private String destination;
     private Tour.Category category;
     private String imageUrl;
+    private String tourImage; // Alias for imageUrl for frontend compatibility
     private List<String> includes;
     private Integer maxGroupSize;
     private Tour.Difficulty difficulty;

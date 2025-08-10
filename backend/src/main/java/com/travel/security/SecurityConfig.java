@@ -31,14 +31,16 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Add this line
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
-                    "/api/auth/**",  // Keep /api prefix here
+                    "/api/auth/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**"
                 ).permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // <-- restrict admin endpoints
+                // Allow public read access to tours endpoints
+                .requestMatchers(HttpMethod.GET, "/api/tours/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
@@ -55,13 +57,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins instead of all
         configuration.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5173"
         ));
 
-        // Allowed methods
         configuration.setAllowedMethods(Arrays.asList(
             HttpMethod.GET.name(),
             HttpMethod.POST.name(),
@@ -70,7 +70,6 @@ public class SecurityConfig {
             HttpMethod.OPTIONS.name()
         ));
 
-        // Allowed headers
         configuration.setAllowedHeaders(Arrays.asList(
             "Authorization",
             "Content-Type",
@@ -78,10 +77,7 @@ public class SecurityConfig {
             "X-Requested-With"
         ));
 
-        // Allow credentials
         configuration.setAllowCredentials(true);
-
-        // Set max age
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { addToWishlist, removeFromWishlist } from '../../store/slices/wishlistSlice';
-import { addBooking } from '../../store/slices/bookingsSlice';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -15,26 +14,64 @@ import {
   DollarSign,
   Check
 } from 'lucide-react';
+import { createBooking, getTourById } from '../../api';
 
 const TourDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const tour = useSelector((state) => 
-    state.tours.tours.find(t => t.id === id)
+  const reduxTour = useSelector((state) => 
+    state.tours.tours.find(t => String(t.id) === String(id))
   );
+
+  const [tour, setTour] = useState(reduxTour || null);
+  const [loading, setLoading] = useState(!reduxTour);
+  const [error, setError] = useState(null);
   
   const wishlistItems = useSelector((state) => state.wishlist.items);
-  const isInWishlist = wishlistItems.some(item => item.id === id);
+  const isInWishlist = wishlistItems.some(item => String(item.id) === String(id));
 
   const [selectedDate, setSelectedDate] = useState('');
   const [guests, setGuests] = useState(1);
+  const token = sessionStorage.getItem('token');
 
-  if (!tour) {
+  useEffect(() => {
+    if (reduxTour) {
+      setTour(reduxTour);
+      setLoading(false);
+      return;
+    }
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getTourById(id);
+        setTour(data);
+        setError(null);
+      } catch (err) {
+        setError(err.message || 'Failed to load tour');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id, reduxTour]);
+
+  const tourImage = (t) => (t?.tourImage || t?.imageUrl || t?.image || 'https://via.placeholder.com/960x480?text=Tour');
+
+  if (loading) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900">Tour not found</h2>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading tour...</p>
+      </div>
+    );
+  }
+
+  if (error || !tour) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900">{error || 'Tour not found'}</h2>
         <button
           onClick={() => navigate('/user/tours')}
           className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg"
@@ -51,7 +88,7 @@ const TourDetails = () => {
         id: tour.id,
         title: tour.title,
         price: tour.price,
-        image: tour.image,
+        image: tourImage(tour),
         destination: tour.destination,
         duration: tour.duration
       }));
@@ -60,51 +97,53 @@ const TourDetails = () => {
         id: tour.id,
         title: tour.title,
         price: tour.price,
-        image: tour.image,
+        image: tourImage(tour),
         destination: tour.destination,
         duration: tour.duration
       }));
     }
   };
 
-  const handleBookNow = () => {
+  const handleBookNow = async () => {
     if (!selectedDate) return;
-    const today = new Date();
-    const endDate = new Date(selectedDate);
-    endDate.setDate(endDate.getDate() + tour.duration);
-    const booking = {
-      id: Date.now().toString(),
-      userId: 'user1', // Replace with actual user id from auth context if available
-      tourId: tour.id,
-      tourTitle: tour.title,
-      tourImage: tour.image,
-      destination: tour.destination,
-      userEmail: 'demo@example.com', // Replace with actual user email from auth context if available
-      userName: 'Demo User', // Replace with actual user name from auth context if available
-      bookingDate: today.toISOString().split('T')[0],
-      travelDate: selectedDate,
-      endDate: endDate.toISOString().split('T')[0],
-      guests: guests,
-      totalAmount: tour.price * guests,
-      status: 'confirmed',
-      paymentStatus: 'paid',
-      paymentMethod: 'Credit Card',
-      createdAt: today.toISOString()
-    };
-    dispatch(addBooking(booking));
-    if (isInWishlist) {
-      dispatch(removeFromWishlist({
-        id: tour.id,
-        title: tour.title,
-        price: tour.price,
-        image: tour.image,
-        destination: tour.destination,
-        duration: tour.duration
-      }));
+    if (!token) {
+      alert('Please sign in to book this tour.');
+      navigate('/login');
+      return;
     }
-    alert('Booking added! Check My Bookings page.');
-    setSelectedDate('');
-    setGuests(1);
+
+    const startDate = new Date(selectedDate);
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + (tour.duration || 1));
+
+    const bookingPayload = {
+      tourId: tour.id,
+      travelDate: selectedDate,
+      endDate: end.toISOString().split('T')[0],
+      guests: guests,
+      totalAmount: (Number(tour.price) || 0) * guests,
+      paymentMethod: 'Credit Card'
+    };
+
+    try {
+      await createBooking(bookingPayload, token);
+      if (isInWishlist) {
+        dispatch(removeFromWishlist({
+          id: tour.id,
+          title: tour.title,
+          price: tour.price,
+          image: tourImage(tour),
+          destination: tour.destination,
+          duration: tour.duration
+        }));
+      }
+      alert('Booking confirmed! Check My Bookings page.');
+      setSelectedDate('');
+      setGuests(1);
+      navigate('/user/bookings');
+    } catch (err) {
+      alert(err.message || 'Failed to create booking');
+    }
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -116,7 +155,7 @@ const TourDetails = () => {
     }
   };
 
-  const totalPrice = tour.price * guests;
+  const totalPrice = (Number(tour.price) || 0) * guests;
 
   return (
     <div className="space-y-6">
@@ -134,7 +173,7 @@ const TourDetails = () => {
         {/* Header Image */}
         <div className="relative h-64 md:h-80">
           <img
-            src={tour.image}
+            src={tourImage(tour)}
             alt={tour.title}
             className="w-full h-full object-cover"
           />
@@ -145,7 +184,7 @@ const TourDetails = () => {
                   {tour.category}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(tour.difficulty)}`}>
-                  {tour.difficulty.charAt(0).toUpperCase() + tour.difficulty.slice(1)}
+                  {tour.difficulty?.charAt(0).toUpperCase() + tour.difficulty?.slice(1)}
                 </span>
               </div>
               <h2 className="text-3xl font-bold">{tour.title}</h2>
@@ -195,7 +234,7 @@ const TourDetails = () => {
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">What's Included</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {tour.includes.map((item, index) => (
+                  {tour.includes?.map((item, index) => (
                     <div key={index} className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
                       <Check className="w-4 h-4 text-green-500 mr-2" />
                       <span className="text-sm text-gray-700">{item}</span>

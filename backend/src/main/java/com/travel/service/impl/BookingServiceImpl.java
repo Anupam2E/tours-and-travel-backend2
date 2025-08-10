@@ -29,8 +29,8 @@ public class BookingServiceImpl implements BookingService {
     
     @Override
     public BookingDto createBooking(BookingDto bookingDto) {
-        User user = userDao.findById(bookingDto.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + bookingDto.getUserId()));
+        // Always use the currently authenticated user
+        User user = userService.getCurrentUserEntity();
         
         Tour tour = tourDao.findById(bookingDto.getTourId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tour not found with id: " + bookingDto.getTourId()));

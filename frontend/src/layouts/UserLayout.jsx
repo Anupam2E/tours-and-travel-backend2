@@ -38,7 +38,7 @@ const UserLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const wishlistItems = useSelector((state) => state.wishlist.items);
-  const token = sessionStorage.getItem('token'); // Add this line to get the token
+  const token = sessionStorage.getItem('token');
 
   const onLogout = () => {
     sessionStorage.clear();
@@ -163,7 +163,7 @@ const UserLayout = () => {
             <Route index element={<UserDashboard />} />
             <Route path="tours" element={<BrowseTours />} />
             <Route path="tours/:id" element={<TourDetails />} />
-            <Route path="bookings" element={<MyBookings />} />
+            <Route path="bookings" element={<MyBookings token={token} />} />
             <Route path="wishlist" element={<Wishlist />} />
             <Route path="payments" element={<PaymentHistory />} />
             <Route path="reviews" element={<MyReviews token={token} />} />

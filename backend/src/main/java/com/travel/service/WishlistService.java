@@ -17,4 +17,9 @@ public interface WishlistService {
     Long getWishlistCountByTourId(Long tourId);
     
     List<TourDto> getCurrentUserWishlist();
+
+    // New convenience methods using the current authenticated user
+    void addToWishlistForCurrentUser(Long tourId);
+
+    void removeFromWishlistForCurrentUser(Long tourId);
 } 

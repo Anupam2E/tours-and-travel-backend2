@@ -78,4 +78,16 @@ public class WishlistServiceImpl implements WishlistService {
         UserDto currentUser = userService.getCurrentUser();
         return getUserWishlist(currentUser.getId());
     }
+
+    @Override
+    public void addToWishlistForCurrentUser(Long tourId) {
+        User currentUser = userService.getCurrentUserEntity();
+        addToWishlist(currentUser.getId(), tourId);
+    }
+
+    @Override
+    public void removeFromWishlistForCurrentUser(Long tourId) {
+        User currentUser = userService.getCurrentUserEntity();
+        removeFromWishlist(currentUser.getId(), tourId);
+    }
 }

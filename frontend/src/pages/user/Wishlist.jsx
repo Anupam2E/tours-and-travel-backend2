@@ -1,7 +1,6 @@
-import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { removeFromWishlist } from '../../store/slices/wishlistSlice';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Heart, 
   MapPin, 
@@ -10,14 +9,110 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
+import { createBooking } from '../../api';
 
 const Wishlist = () => {
-  const dispatch = useDispatch();
-  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const token = sessionStorage.getItem('token');
 
-  const handleRemoveFromWishlist = (item) => {
-    dispatch(removeFromWishlist(item));
+  const fetchWishlist = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:8082/api/wishlist/my-wishlist', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to fetch wishlist');
+      }
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch wishlist');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (!token) {
+      setError('Please sign in to view your wishlist.');
+      setLoading(false);
+      return;
+    }
+    fetchWishlist();
+  }, [token]);
+
+  const handleRemoveFromWishlist = async (tourId) => {
+    try {
+      const res = await fetch(`http://localhost:8082/api/wishlist/remove-current?tourId=${tourId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to remove from wishlist');
+      }
+      setItems(items.filter(t => t.id !== tourId));
+    } catch (err) {
+      alert(err.message || 'Failed to remove from wishlist');
+    }
+  };
+
+  const handleBookNow = async (item) => {
+    if (!token) {
+      alert('Please sign in to book this tour.');
+      navigate('/login');
+      return;
+    }
+    try {
+      const start = new Date();
+      const travelDate = start.toISOString().split('T')[0];
+      const end = new Date(start.getTime() + (item.duration || 1) * 24 * 60 * 60 * 1000);
+      const endDate = end.toISOString().split('T')[0];
+      const totalAmount = typeof item.price === 'number' ? item.price : parseFloat(item.price || 0);
+
+      await createBooking({
+        tourId: item.id,
+        travelDate,
+        endDate,
+        guests: 1,
+        totalAmount,
+        paymentMethod: 'Credit Card'
+      }, token);
+
+      // Remove from wishlist in DB
+      await handleRemoveFromWishlist(item.id);
+
+      alert('Booking confirmed! The tour has been removed from your wishlist.');
+      navigate('/user/bookings');
+    } catch (err) {
+      alert(err.message || 'Failed to create booking');
+    }
+  };
+
+  const tourImage = (t) => t.tourImage || t.imageUrl || 'https://via.placeholder.com/640x360?text=Tour+Image';
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading wishlist...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -25,22 +120,26 @@ const Wishlist = () => {
         <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
         <div className="flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-lg">
           <Heart className="w-5 h-5 mr-2" />
-          <span className="font-medium">{wishlistItems.length} Saved Tours</span>
+          <span className="font-medium">{items.length} Saved Tours</span>
         </div>
       </div>
 
-      {wishlistItems.length > 0 ? (
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">{error}</div>
+      )}
+
+      {items.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {wishlistItems.map((item) => (
+          {items.map((item) => (
             <div key={item.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow group">
               <div className="relative">
                 <img
-                  src={item.image}
+                  src={tourImage(item)}
                   alt={item.title}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <button
-                  onClick={() => handleRemoveFromWishlist(item)}
+                  onClick={() => handleRemoveFromWishlist(item.id)}
                   className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                   title="Remove from wishlist"
                 >
@@ -78,7 +177,14 @@ const Wishlist = () => {
                     View Details
                   </Link>
                   <button
-                    onClick={() => handleRemoveFromWishlist(item)}
+                    onClick={() => handleBookNow(item)}
+                    className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                    title="Book this tour"
+                  >
+                    Book Now
+                  </button>
+                  <button
+                    onClick={() => handleRemoveFromWishlist(item.id)}
                     className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-sm font-medium transition-colors flex items-center"
                     title="Remove from wishlist"
                   >

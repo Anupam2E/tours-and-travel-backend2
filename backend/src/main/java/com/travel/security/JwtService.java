@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -79,7 +80,29 @@ public class JwtService {
     }
     
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = resolveKeyBytes(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private byte[] resolveKeyBytes(String secret) {
+        // Try Base64 first
+        try {
+            return Decoders.BASE64.decode(secret);
+        } catch (IllegalArgumentException ignored) {
+            // Not base64
+        }
+        // Try hex
+        if (secret != null && secret.matches("^[0-9a-fA-F]+$") && secret.length() % 2 == 0) {
+            int len = secret.length();
+            byte[] data = new byte[len / 2];
+            for (int i = 0; i < len; i += 2) {
+                int hi = Character.digit(secret.charAt(i), 16);
+                int lo = Character.digit(secret.charAt(i + 1), 16);
+                data[i / 2] = (byte) ((hi << 4) + lo);
+            }
+            return data;
+        }
+        // Fallback: raw UTF-8 bytes
+        return secret.getBytes(StandardCharsets.UTF_8);
     }
 } 

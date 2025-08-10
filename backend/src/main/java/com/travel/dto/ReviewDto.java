@@ -19,4 +19,9 @@ public class ReviewDto {
     private String comment;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Extra fields for tour display
+    private String tourTitle;
+    private String tourDestination;
+    private String tourImage; // maps to Tour.imageUrl
 } 

@@ -28,22 +28,15 @@ public class WishlistController {
         return ResponseEntity.ok(wishlist);
     }
     
-    @GetMapping("/check/{tourId}")
-    public ResponseEntity<Boolean> isInWishlist(@PathVariable Long tourId) {
-        // This would need to get current user ID from security context
-        // For now, returning false as placeholder
-        return ResponseEntity.ok(false);
-    }
-    
-    @PostMapping("/add")
-    public ResponseEntity<Void> addToWishlist(@RequestParam Long userId, @RequestParam Long tourId) {
-        wishlistService.addToWishlist(userId, tourId);
+    @PostMapping("/add-current")
+    public ResponseEntity<Void> addToWishlistForCurrent(@RequestParam Long tourId) {
+        wishlistService.addToWishlistForCurrentUser(tourId);
         return ResponseEntity.ok().build();
     }
-    
-    @DeleteMapping("/remove")
-    public ResponseEntity<Void> removeFromWishlist(@RequestParam Long userId, @RequestParam Long tourId) {
-        wishlistService.removeFromWishlist(userId, tourId);
+
+    @DeleteMapping("/remove-current")
+    public ResponseEntity<Void> removeFromWishlistForCurrent(@RequestParam Long tourId) {
+        wishlistService.removeFromWishlistForCurrentUser(tourId);
         return ResponseEntity.noContent().build();
     }
     

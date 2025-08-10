@@ -27,6 +27,12 @@ const LoginPage = () => {
         sessionStorage.setItem('firstName', normalizedUser.firstName);
         sessionStorage.setItem('lastName', normalizedUser.lastName);
         sessionStorage.setItem('role', normalizedUser.role);
+        if (normalizedUser.id) {
+          sessionStorage.setItem('userId', String(normalizedUser.id));
+        }
+        if (normalizedUser.email) {
+          sessionStorage.setItem('email', normalizedUser.email);
+        }
         setUser(normalizedUser);
         toast.success('Welcome to Tours & Travels!');
         // Navigate based on role

@@ -173,6 +173,7 @@ public class TourServiceImpl implements TourService {
         dto.setDestination(tour.getDestination());
         dto.setCategory(tour.getCategory());
         dto.setImageUrl(tour.getImageUrl());
+        dto.setTourImage(tour.getImageUrl()); // Set tourImage to match imageUrl for frontend compatibility
         dto.setIncludes(tour.getIncludes());
         dto.setMaxGroupSize(tour.getMaxGroupSize());
         dto.setDifficulty(tour.getDifficulty());
