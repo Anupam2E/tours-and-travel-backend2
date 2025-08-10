@@ -19,4 +19,9 @@ public class UserController {
         UserDto updatedUser = userService.updateCurrentUserProfile(updateDto);
         return ResponseEntity.ok(updatedUser);
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getCurrentUser() {
+        return ResponseEntity.ok(userService.getCurrentUser());
+    }
 }

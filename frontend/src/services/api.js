@@ -74,6 +74,7 @@ export const userAPI = {
   deactivateUser: (id) => api.put(`/api/admin/users/${id}/deactivate`),
   searchUsers: (searchTerm) => api.get(`/api/admin/users/search?searchTerm=${searchTerm}`),
   updateProfile: (profileData) => api.put('/api/user/profile'),
+  getCurrentUser: () => api.get('/api/user/me'),
   getTotalUserCount: () => api.get('/api/admin/dashboard/stats'),
 };
 
