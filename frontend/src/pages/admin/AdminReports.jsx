@@ -54,7 +54,7 @@ const AdminReports = () => {
       const monthIndex = (currentMonth - 5 + index + 12) % 12;
       const monthBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.createdAt || booking.bookingDate);
-        return bookingDate.getMonth() === monthIndex && booking.paymentStatus === 'paid';
+        return bookingDate.getMonth() === monthIndex && (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'paid');
       });
       const monthRevenue = monthBookings.reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
       const monthBookingsCount = monthBookings.length;
@@ -87,8 +87,8 @@ const AdminReports = () => {
     destination: tour.destination,
     bookings: bookings.filter(booking => booking.tourId === tour.id).length,
     revenue: bookings
-      .filter(booking => booking.tourId === tour.id && booking.paymentStatus === 'paid')
-      .reduce((sum, booking) => sum + (booking.totalAmount || 0), 0)
+      .filter(booking => booking.tourId === tour.id && (booking.paymentStatus === 'PAID' || booking.paymentStatus === 'paid'))
+      .reduce((sum, booking) => sum + (Number(booking.totalAmount) || 0), 0)
   })).sort((a, b) => b.bookings - a.bookings).slice(0, 8);
 
   // Generate user growth data from actual user registrations
@@ -114,31 +114,15 @@ const AdminReports = () => {
 
   // Booking status distribution
   const bookingStatusData = [
-    { 
-      name: 'Confirmed', 
-      value: bookings.filter(b => b.status === 'confirmed').length,
-      color: '#10B981'
-    },
-    { 
-      name: 'Pending', 
-      value: bookings.filter(b => b.status === 'pending').length,
-      color: '#F59E0B'
-    },
-    { 
-      name: 'Cancelled', 
-      value: bookings.filter(b => b.status === 'cancelled').length,
-      color: '#EF4444'
-    },
-    { 
-      name: 'Completed', 
-      value: bookings.filter(b => b.status === 'completed').length,
-      color: '#3B82F6'
-    }
+    { name: 'Confirmed', value: bookings.filter(b => (b.status === 'CONFIRMED' || b.status === 'confirmed')).length, color: '#10B981' },
+    { name: 'Pending', value: bookings.filter(b => (b.status === 'PENDING' || b.status === 'pending')).length, color: '#F59E0B' },
+    { name: 'Cancelled', value: bookings.filter(b => (b.status === 'CANCELLED' || b.status === 'cancelled')).length, color: '#EF4444' },
+    { name: 'Completed', value: bookings.filter(b => (b.status === 'COMPLETED' || b.status === 'completed')).length, color: '#3B82F6' }
   ];
 
   const totalRevenue = bookings
-    .filter(booking => booking.paymentStatus === 'paid')
-    .reduce((sum, booking) => sum + (booking.totalAmount || 0), 0);
+    .filter(booking => booking.paymentStatus === 'PAID' || booking.paymentStatus === 'paid')
+    .reduce((sum, booking) => sum + (Number(booking.totalAmount) || 0), 0);
 
   const averageBookingValue = totalRevenue / bookings.filter(b => b.paymentStatus === 'paid').length || 0;
 
@@ -147,7 +131,7 @@ const AdminReports = () => {
       { Metric: 'Total Revenue', Value: `$${totalRevenue.toLocaleString()}` },
       { Metric: 'Total Bookings', Value: bookings.length },
       { Metric: 'Avg Booking Value', Value: `$${Math.round(averageBookingValue)}` },
-      { Metric: 'Active Users', Value: users.filter(u => u.role === 'user' && u.isActive).length },
+      { Metric: 'Active Users', Value: users.filter(u => (u.role === 'USER' || u.role === 'user') && u.isActive).length },
       { Metric: 'Total Tours', Value: tours.length },
       { Metric: 'Confirmed Bookings', Value: bookings.filter(b => b.status === 'confirmed').length },
       { Metric: 'Pending Bookings', Value: bookings.filter(b => b.status === 'pending').length },

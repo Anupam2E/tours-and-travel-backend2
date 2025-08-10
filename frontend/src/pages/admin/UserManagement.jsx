@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { updateUser } from '../../store/slices/usersSlice';
+import { fetchAllUsers, activateUser, deactivateUser } from '../../store/slices/usersSlice';
 import { toast } from 'react-toastify';
 import { 
   Users, 
@@ -21,12 +21,18 @@ import {
 const UserManagement = () => {
   const dispatch = useDispatch();
   const users = useSelector((state) => state.users.users);
+  const loading = useSelector((state) => state.users.loading);
+  const error = useSelector((state) => state.users.error);
+
+  useEffect(() => {
+    dispatch(fetchAllUsers());
+  }, [dispatch]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const userAccounts = users.filter(user => user.role === 'user');
+  const userAccounts = users.filter(user => user.role === 'USER' || user.role === 'user');
 
   const filteredUsers = userAccounts.filter(user => {
     const matchesSearch = user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -39,12 +45,19 @@ const UserManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleToggleUserStatus = (userId) => {
+  const handleToggleUserStatus = async (userId) => {
     const user = users.find(u => u.id === userId);
-    if (user) {
-      const updatedUser = { ...user, isActive: !user.isActive };
-      dispatch(updateUser(updatedUser));
-      toast.success(`User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`);
+    if (!user) return;
+    try {
+      if (user.isActive) {
+        await dispatch(deactivateUser(userId)).unwrap();
+        toast.success('User deactivated successfully');
+      } else {
+        await dispatch(activateUser(userId)).unwrap();
+        toast.success('User activated successfully');
+      }
+    } catch (e) {
+      toast.error(typeof e === 'string' ? e : 'Failed to update user status');
     }
   };
 
@@ -76,6 +89,18 @@ const UserManagement = () => {
           <span className="font-medium">{userAccounts.length} Total Users</span>
         </div>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">
+          {error}
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -197,7 +222,7 @@ const UserManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <img
-                        src={user.avatar}
+                        src={user.avatarUrl}
                         alt={`${user.firstName} ${user.lastName}`}
                         className="w-10 h-10 rounded-full object-cover"
                       />
@@ -216,7 +241,7 @@ const UserManagement = () => {
                     </div>
                     <div className="text-sm text-gray-500 flex items-center">
                       <Phone className="w-4 h-4 mr-1 text-gray-400" />
-                      {user.phone}
+                      {user.phoneNumber}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -297,8 +322,8 @@ const UserManagement = () => {
             
             <div className="p-6 space-y-6">
               <div className="flex items-center space-x-4">
-                <img
-                  src={selectedUser.avatar}
+                   <img
+                  src={selectedUser.avatarUrl}
                   alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
                   className="w-16 h-16 rounded-full object-cover"
                 />
@@ -320,8 +345,8 @@ const UserManagement = () => {
                       {selectedUser.email}
                     </div>
                     <div className="flex items-center">
-                      <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                      {selectedUser.phone}
+                       <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                       {selectedUser.phoneNumber}
                     </div>
                   </div>
                 </div>
