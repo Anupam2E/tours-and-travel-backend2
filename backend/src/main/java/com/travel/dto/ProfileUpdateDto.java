@@ -8,4 +8,5 @@ public class ProfileUpdateDto {
     private String lastName;
     private String phoneNumber;  // Changed from 'phone' to match your API payload
     private String avatarUrl;    // Changed from 'avatar' to match your API payload
+    private String address;
 }

@@ -160,6 +160,7 @@ public class UserServiceImpl implements UserService {
         dto.setLastName(user.getLastName());
         dto.setEmail(user.getEmail());
         dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setAddress(user.getAddress());
         dto.setRole(user.getRole());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setJoinDate(user.getJoinDate());
@@ -180,7 +181,8 @@ public class UserServiceImpl implements UserService {
 		    Optional.ofNullable(updateDto.getFirstName()).ifPresent(user::setFirstName);
 		    Optional.ofNullable(updateDto.getLastName()).ifPresent(user::setLastName);
 		    Optional.ofNullable(updateDto.getPhoneNumber()).ifPresent(user::setPhoneNumber);
-		    Optional.ofNullable(updateDto.getAvatarUrl()).ifPresent(user::setAvatarUrl);
+            Optional.ofNullable(updateDto.getAvatarUrl()).ifPresent(user::setAvatarUrl);
+            Optional.ofNullable(updateDto.getAddress()).ifPresent(user::setAddress);
 		    
 		    User updatedUser = userDao.save(user);
 		    return convertToDto(updatedUser);
