@@ -27,8 +27,6 @@ const Wishlist = () => {
   const handleRemoveFromWishlist = async (tourId) => {
     try {
       await dispatch(removeFromWishlistBackend({ tourId, token })).unwrap();
-      // Refresh wishlist from backend
-      dispatch(fetchWishlistFromBackend(token));
     } catch (err) {
       alert(err.message || 'Failed to remove from wishlist');
     }
@@ -56,7 +54,7 @@ const Wishlist = () => {
         paymentMethod: 'Credit Card'
       }, token);
 
-      // Remove from wishlist in DB
+      // Remove from wishlist in DB and locally
       await handleRemoveFromWishlist(item.id);
 
       alert('Booking confirmed! The tour has been removed from your wishlist.');
