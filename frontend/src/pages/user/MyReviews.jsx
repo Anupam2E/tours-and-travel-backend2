@@ -237,17 +237,17 @@ const MyReviews = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
                 <img
-                  src={review.tourImage || getImageForDestination(review.tour?.destination)}
-                  alt={review.tour?.title || 'Tour'}
+                  src={review.tourImage || getImageForDestination(review.tourDestination)}
+                  alt={review.tourTitle || 'Tour'}
                   className="w-16 h-16 rounded-lg object-cover"
                 />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {review.tour?.title || 'Tour Title Not Available'}
+                    {review.tourTitle || 'Tour Title Not Available'}
                   </h3>
                   <div className="flex items-center text-sm text-gray-600 mb-2">
                     <MapPin className="w-4 h-4 mr-1" />
-                    {review.tour?.destination || 'Destination Not Available'}
+                    {review.tourDestination || 'Destination Not Available'}
                   </div>
                   <div className="flex items-center space-x-4 mb-3">
                     {renderStars(review.rating)}

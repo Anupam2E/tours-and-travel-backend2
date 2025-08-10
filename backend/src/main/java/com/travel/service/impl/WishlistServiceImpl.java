@@ -50,9 +50,10 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     public void removeFromWishlist(Long userId, Long tourId) {
         if (!wishlistDao.existsByUserIdAndTourId(userId, tourId)) {
-            throw new ResourceNotFoundException("Wishlist item not found");
+            // Make removal idempotent: if it's already not present, treat as success
+            return;
         }
-        
+
         wishlistDao.deleteByUserIdAndTourId(userId, tourId);
     }
     

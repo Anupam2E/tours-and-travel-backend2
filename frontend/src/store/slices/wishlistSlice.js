@@ -84,8 +84,8 @@ const wishlistSlice = createSlice({
         // as it will be fetched from backend
       })
       .addCase(removeFromWishlistBackend.fulfilled, (state, action) => {
-        // Tour was removed from backend, no need to modify local state
-        // as it will be fetched from backend
+        const removedId = action.payload;
+        state.items = state.items.filter(item => item.id !== removedId);
       });
   },
 });
