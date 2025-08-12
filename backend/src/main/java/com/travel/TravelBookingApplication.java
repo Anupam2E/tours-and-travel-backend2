@@ -2,6 +2,7 @@ package com.travel;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import com.travel.service.UserService;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.travel.dao.UserDao;
 
 @SpringBootApplication
+@EnableTransactionManagement
 public class TravelBookingApplication {
     public static void main(String[] args) {
         SpringApplication.run(TravelBookingApplication.class, args);

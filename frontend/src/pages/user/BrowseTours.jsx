@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend } from '../../store/slices/wishlistSlice';
+import { addToWishlistBackend, removeFromWishlistBackend, fetchWishlistFromBackend, setWishlistItems } from '../../store/slices/wishlistSlice';
 import { fetchTours } from '../../store/slices/toursSlice';
 import { Link, useNavigate } from 'react-router-dom';
 import { createBooking } from '../../services/api';
@@ -37,7 +37,7 @@ const BrowseTours = () => {
   // Fetch wishlist from backend when component mounts
   useEffect(() => {
     if (token) {
-      dispatch(fetchWishlistFromBackend(token));
+      dispatch(fetchWishlistFromBackend());
     }
   }, [dispatch, token]);
 
@@ -71,18 +71,14 @@ const BrowseTours = () => {
     if (isInWishlist(tour.id)) {
       // Remove from wishlist
       try {
-        await dispatch(removeFromWishlistBackend({ tourId: tour.id, token })).unwrap();
-        // Refresh wishlist from backend
-        dispatch(fetchWishlistFromBackend(token));
+        await dispatch(removeFromWishlistBackend(tour.id)).unwrap();
       } catch (err) {
         alert('Failed to remove from wishlist: ' + err.message);
       }
     } else {
       // Add to wishlist
       try {
-        await dispatch(addToWishlistBackend({ tourId: tour.id, token })).unwrap();
-        // Refresh wishlist from backend
-        dispatch(fetchWishlistFromBackend(token));
+        await dispatch(addToWishlistBackend(tour.id)).unwrap();
       } catch (err) {
         alert('Failed to add to wishlist: ' + err.message);
       }
@@ -110,7 +106,21 @@ const BrowseTours = () => {
     };
 
     try {
-      await createBooking(payload, token);
+      // Remove from wishlist in DB first, then book
+      try {
+        await dispatch(removeFromWishlistBackend(tour.id)).unwrap();
+      } catch (removeErr) {
+        console.warn('Wishlist removal before booking failed:', removeErr);
+      }
+
+      await createBooking(payload);
+
+      // Optimistically update local wishlist immediately after booking
+      const remaining = wishlistItems.filter((i) => String(i.id) !== String(tour.id));
+      dispatch(setWishlistItems(remaining));
+      // Then re-fetch to ensure final consistency
+      dispatch(fetchWishlistFromBackend());
+
       alert('Booking confirmed!');
       navigate('/user/bookings');
     } catch (err) {
