@@ -10,7 +10,7 @@ import {
   Eye
 } from 'lucide-react';
 import { createBooking } from '../../services/api';
-import { fetchWishlistFromBackend, removeFromWishlistBackend } from '../../store/slices/wishlistSlice';
+import { fetchWishlistFromBackend, removeFromWishlistBackend, setWishlistItems } from '../../store/slices/wishlistSlice';
 
 const Wishlist = () => {
   const navigate = useNavigate();
@@ -20,14 +20,15 @@ const Wishlist = () => {
 
   useEffect(() => {
     if (token) {
-      dispatch(fetchWishlistFromBackend(token));
+      dispatch(fetchWishlistFromBackend());
     }
   }, [dispatch, token]);
 
   const handleRemoveFromWishlist = async (tourId) => {
     try {
-      await dispatch(removeFromWishlistBackend({ tourId, token })).unwrap();
+      await dispatch(removeFromWishlistBackend(tourId)).unwrap();
     } catch (err) {
+      // UI will auto-revert via re-fetch in the thunk
       alert(err.message || 'Failed to remove from wishlist');
     }
   };
@@ -45,6 +46,14 @@ const Wishlist = () => {
       const endDate = end.toISOString().split('T')[0];
       const totalAmount = typeof item.price === 'number' ? item.price : parseFloat(item.price || 0);
 
+      // Ensure the tour is removed from wishlist in DB before booking
+      try {
+        await dispatch(removeFromWishlistBackend(item.id)).unwrap();
+      } catch (removeErr) {
+        // Proceed with booking even if removal fails; will re-sync after
+        console.warn('Wishlist removal before booking failed:', removeErr);
+      }
+
       await createBooking({
         tourId: item.id,
         travelDate,
@@ -52,10 +61,13 @@ const Wishlist = () => {
         guests: 1,
         totalAmount,
         paymentMethod: 'Credit Card'
-      }, token);
+      });
 
-      // Remove from wishlist in DB and locally
-      await handleRemoveFromWishlist(item.id);
+      // Optimistically update local wishlist UI without reload
+      // Then re-fetch to ensure final consistency
+      const remaining = items.filter((i) => String(i.id) !== String(item.id));
+      dispatch(setWishlistItems(remaining));
+      dispatch(fetchWishlistFromBackend());
 
       alert('Booking confirmed! The tour has been removed from your wishlist.');
       navigate('/user/bookings');

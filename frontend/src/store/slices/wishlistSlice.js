@@ -10,9 +10,9 @@ const initialState = {
 // Async thunks for backend sync
 export const fetchWishlistFromBackend = createAsyncThunk(
   'wishlist/fetchFromBackend',
-  async (token, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const data = await getMyWishlist(token);
+      const data = await getMyWishlist();
       return Array.isArray(data) ? data : [];
     } catch (error) {
       return rejectWithValue(error.message);
@@ -22,9 +22,9 @@ export const fetchWishlistFromBackend = createAsyncThunk(
 
 export const addToWishlistBackend = createAsyncThunk(
   'wishlist/addToBackend',
-  async ({ tourId, token }, { rejectWithValue }) => {
+  async (tourId, { rejectWithValue }) => {
     try {
-      await addToWishlistCurrent(tourId, token);
+      await addToWishlistCurrent(tourId);
       return tourId;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -34,11 +34,13 @@ export const addToWishlistBackend = createAsyncThunk(
 
 export const removeFromWishlistBackend = createAsyncThunk(
   'wishlist/removeFromBackend',
-  async ({ tourId, token }, { rejectWithValue }) => {
+  async (tourId, { dispatch, rejectWithValue }) => {
     try {
-      await removeFromWishlistCurrent(tourId, token);
+      await removeFromWishlistCurrent(tourId);
       return tourId;
     } catch (error) {
+      // Auto-revert by re-fetching the wishlist from backend
+      dispatch(fetchWishlistFromBackend());
       return rejectWithValue(error.message);
     }
   }
@@ -79,13 +81,18 @@ const wishlistSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      // Optimistic removal on pending
+      .addCase(removeFromWishlistBackend.pending, (state, action) => {
+        const pendingRemovedId = action.meta.arg;
+        state.items = state.items.filter(item => String(item.id) !== String(pendingRemovedId));
+      })
       .addCase(addToWishlistBackend.fulfilled, (state, action) => {
         // Tour was added to backend, no need to modify local state
         // as it will be fetched from backend
       })
       .addCase(removeFromWishlistBackend.fulfilled, (state, action) => {
         const removedId = action.payload;
-        state.items = state.items.filter(item => item.id !== removedId);
+        state.items = state.items.filter(item => String(item.id) !== String(removedId));
       });
   },
 });
