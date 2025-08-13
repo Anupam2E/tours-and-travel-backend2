@@ -22,10 +22,11 @@ export const fetchWishlistFromBackend = createAsyncThunk(
 
 export const addToWishlistBackend = createAsyncThunk(
   'wishlist/addToBackend',
-  async (tourId, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
+      const tourId = typeof payload === 'object' ? payload.id : payload;
       await addToWishlistCurrent(tourId);
-      return tourId;
+      return payload; // Prefer returning full tour object if provided for optimistic UI update
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -86,9 +87,32 @@ const wishlistSlice = createSlice({
         const pendingRemovedId = action.meta.arg;
         state.items = state.items.filter(item => String(item.id) !== String(pendingRemovedId));
       })
+      // Optimistic add on pending
+      .addCase(addToWishlistBackend.pending, (state, action) => {
+        const payload = action.meta.arg;
+        const pendingId = typeof payload === 'object' ? payload.id : payload;
+        const exists = state.items.some(item => String(item.id) === String(pendingId));
+        if (!exists) {
+          const itemToAdd = typeof payload === 'object' ? payload : { id: pendingId };
+          state.items.push(itemToAdd);
+        }
+      })
       .addCase(addToWishlistBackend.fulfilled, (state, action) => {
-        // Tour was added to backend, no need to modify local state
-        // as it will be fetched from backend
+        const payload = action.payload;
+        const addedId = typeof payload === 'object' ? payload.id : payload;
+        const exists = state.items.some(item => String(item.id) === String(addedId));
+        if (!exists) {
+          // Optimistically add full tour object if available; otherwise, add minimal placeholder
+          const itemToAdd = typeof payload === 'object' ? payload : { id: addedId };
+          state.items.push(itemToAdd);
+        }
+        state.error = null;
+      })
+      .addCase(addToWishlistBackend.rejected, (state, action) => {
+        const payload = action.meta.arg;
+        const failedId = typeof payload === 'object' ? payload.id : payload;
+        state.items = state.items.filter(item => String(item.id) !== String(failedId));
+        state.error = action.payload || 'Failed to add to wishlist';
       })
       .addCase(removeFromWishlistBackend.fulfilled, (state, action) => {
         const removedId = action.payload;

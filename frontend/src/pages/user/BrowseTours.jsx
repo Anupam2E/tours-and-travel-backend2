@@ -78,9 +78,10 @@ const BrowseTours = () => {
     } else {
       // Add to wishlist
       try {
-        await dispatch(addToWishlistBackend(tour.id)).unwrap();
+        await dispatch(addToWishlistBackend(tour)).unwrap();
+        alert('Added to wishlist');
       } catch (err) {
-        alert('Failed to add to wishlist: ' + err.message);
+        alert('Failed to add to wishlist: ' + (err?.message || 'Unknown error'));
       }
     }
   };

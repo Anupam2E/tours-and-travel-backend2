@@ -99,14 +99,16 @@ const TourDetails = () => {
     if (isInWishlist) {
       try {
         await dispatch(removeFromWishlistBackend(tour.id)).unwrap();
+        alert('Removed from wishlist');
       } catch (err) {
-        alert('Failed to remove from wishlist: ' + err.message);
+        alert('Failed to remove from wishlist: ' + (err?.message || 'Unknown error'));
       }
     } else {
       try {
-        await dispatch(addToWishlistBackend(tour.id)).unwrap();
+        await dispatch(addToWishlistBackend(tour)).unwrap();
+        alert('Added to wishlist');
       } catch (err) {
-        alert('Failed to add to wishlist: ' + err.message);
+        alert('Failed to add to wishlist: ' + (err?.message || 'Unknown error'));
       }
     }
   };
