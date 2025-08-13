@@ -159,7 +159,7 @@ const EditPackage = () => {
         category: formData.category,
         imageUrl: formData.image,
         maxGroupSize: formData.maxGroupSize,
-        difficulty: formData.difficulty,
+        difficulty: String(formData.difficulty || '').toUpperCase(),
         includes: formData.includes,
         isActive: formData.isActive
       };
